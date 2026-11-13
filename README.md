@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/icon.png" alt="" width="128">
+  <a href="https://abdani.github.io/Android-Media-Separator/"><img src="docs/images/social-preview.png" alt="Android Media Separator — sort your phone's media on Windows"></a>
 </p>
 
 <h1 align="center">Android Media Separator</h1>
@@ -10,7 +10,16 @@
 </p>
 
 <p align="center">
-  One Python file · no packages to install · Windows 10/11
+  <img alt="Windows 10/11" src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?style=for-the-badge&logo=windows11&logoColor=white">
+  <img alt="Python 3" src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white">
+  <img alt="Android over USB" src="https://img.shields.io/badge/Android-USB%20(MTP)-2FBF71?style=for-the-badge&logo=android&logoColor=white">
+  <img alt="MIT License" src="https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge">
+</p>
+
+<p align="center">
+  <a href="https://abdani.github.io/Android-Media-Separator/"><b>🌐 Homepage</b></a> ·
+  <a href="../../releases/latest/download/android_media_separator.py"><b>⬇ Download</b></a> ·
+  one Python file · no packages to install
 </p>
 
 ![Main window](docs/images/main.png)
