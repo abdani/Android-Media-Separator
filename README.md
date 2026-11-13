@@ -32,6 +32,7 @@
 | **Exclusions** | Right-click to exclude a file or a whole folder. Exclusions are remembered between runs. |
 | **Log** | Every action is written to `_AndroidMediaSeparator_Logs.csv` as it happens, so the log survives even if the PC crashes mid-run. |
 | **Stop at any time** | Cancel a long run; files already done stay done. A phone that drops off USB is retried, then reported. |
+| **English or Indonesian** | English by default; switch to Bahasa Indonesia under **⚙ Options → 🌐 Language / Bahasa**. |
 
 ## Screenshots
 
@@ -43,7 +44,12 @@
 | --- | --- |
 | ![Preview](docs/images/preview.png) | ![Duplicates](docs/images/duplicates.png) |
 
-The interface is in Indonesian.
+<details>
+<summary>Bahasa Indonesia</summary>
+
+![Main window in Indonesian](docs/images/main-id.png)
+
+</details>
 
 ## Result
 
@@ -71,7 +77,7 @@ Phone Backup\
 └─ _AndroidMediaSeparator_Logs.csv
 ```
 
-Turn off **Opsi → Subfolder Android** to get only the category folders.
+Turn off **⚙ Options → Android subfolders** to get only the category folders.
 
 ## Usage
 
@@ -84,17 +90,17 @@ python android_media_separator.py --self-test
 
 **From a PC folder**
 
-1. Click **Folder PC** and choose the folder.
+1. Click **PC Folder** and choose the folder.
 2. Check the table, then press **Preview** to see where each file will go.
-3. Choose **Pindahkan** (move) or **Salin** (copy) and press **Pisahkan semua**.
+3. Choose **Move** or **Copy** and press **Organize all**.
 
 **From a phone**
 
 1. Connect the phone with a USB cable and choose **File transfer** on the phone.
-2. Click **HP / OTG** and pick the phone's storage (e.g. *Internal shared storage*).
+2. Click **Phone / OTG** and pick the phone's storage (e.g. *Internal shared storage*).
 3. Pick the PC folder to save into, then continue as above. Keep the phone's screen on while it is being read.
 
-To select only some files, select them in the table (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click) and right-click → **Pisahkan yang dipilih**.
+To organize only some files, select them in the table (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click) and right-click → **Organize selected**.
 
 | Shortcut | Action |
 | --- | --- |
@@ -106,8 +112,8 @@ To select only some files, select them in the table (<kbd>Ctrl</kbd>/<kbd>Shift<
 
 ## Settings and files
 
-- **Options** (⚙ Opsi): include subfolders, skip system folders, Android subfolders, protect app data, what to do when a name exists, and manual exclusions.
-- **Exclusions** are saved in `%APPDATA%\AndroidMediaSeparator\exclusions.json`. Set `AMS_CONFIG_DIR` to keep them elsewhere.
+- **⚙ Options**: what to do when a name exists, include subfolders, skip system folders, Android subfolders, protect app data, manual exclusions, the log and the language.
+- **Language** and **exclusions** are saved in `%APPDATA%\AndroidMediaSeparator\` (`settings.json`, `exclusions.json`). Set `AMS_CONFIG_DIR` to keep them elsewhere. A language change applies the next time the app starts.
 - **Phone imports** pass through a temporary `.ams_staging` folder inside the destination, which is cleaned up after the run. A file that did not arrive completely stays there and is reported.
 
 ## Platform support

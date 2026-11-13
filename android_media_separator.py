@@ -24,7 +24,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, font as tkfont
 
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 APP_TITLE = f"Android Media Separator {VERSION}"
 CATEGORY_DIRS = ("Images", "Videos", "Audio", "Documents", "Archives", "Code", "Other")
 CATEGORY_LABELS = {"Images": "Foto", "Videos": "Video", "Audio": "Audio", "Documents": "Dokumen",
@@ -130,6 +130,228 @@ def protection_reason(rel_posix: str) -> str:
 
 CONFIG_DIR = Path(os.environ.get("AMS_CONFIG_DIR")
                   or Path(os.environ.get("APPDATA") or Path.home()) / "AndroidMediaSeparator")
+SETTINGS_PATH = CONFIG_DIR / "settings.json"
+
+
+def load_settings() -> dict:
+    try:
+        data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_settings(data: dict):
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    SETTINGS_PATH.write_text(json.dumps(data, indent=1), encoding="utf-8")
+
+
+# ── language ─────────────────────────────────────────────────────────────
+# The UI was written in Indonesian; those strings are the keys and EN holds the English.
+LANGS = ("English", "Indonesia")
+LANG_NAMES = {"English": "English", "Indonesia": "Bahasa Indonesia"}
+LANG = "English"  # set from settings.json in App.__init__, before any UI is built
+EN = {
+    # categories, table, protection reasons
+    "Semua": "All", "Foto": "Photos", "Video": "Videos", "Audio": "Audio", "Dokumen": "Documents",
+    "Arsip": "Archives", "Kode": "Code", "Lainnya": "Other",
+    "Nama": "Name", "Tujuan": "Destination", "Ukuran": "Size", "Diubah": "Modified",
+    "backup/database WhatsApp": "WhatsApp backup/database", "backup terenkripsi aplikasi": "encrypted app backup",
+    "database aplikasi": "app database", "penanda sistem Android": "Android system marker", "dikecualikan": "excluded",
+    # main window
+    "Pilih folder di PC atau hubungkan HP untuk mulai.": "Choose a folder on the PC or connect a phone to start.",
+    "📁 Folder PC": "📁 PC Folder", "📱 HP / OTG": "📱 Phone / OTG", "Simpan ke PC:": "Save to PC:", "Ubah…": "Change…",
+    "⚙ Opsi ▾": "⚙ Options ▾", "Cari nama file…": "Search file names…",
+    "Ekstensi": "Extensions", "Dari": "From", "Sampai": "To",
+    "mis. .jpg,.pdf · tanggal YYYY-MM-DD": "e.g. .jpg,.pdf · dates as YYYY-MM-DD",
+    "Cari duplikat": "Find duplicates", "Pindahkan": "Move", "Salin": "Copy",
+    "⚡ Pisahkan {} dipilih": "⚡ Organize {} selected", "⚡ Pisahkan semua ({})": "⚡ Organize all ({})",
+    "Pisahkan yang dipilih": "Organize selected", "Buka lokasi file": "Show file location", "Salin path": "Copy path",
+    "🔒 Kecualikan file yang dipilih": "🔒 Exclude selected files",
+    "🔒 Kecualikan seluruh folder ini": "🔒 Exclude this whole folder", "Batalkan pengecualian": "Remove exclusion",
+    "📁 Pilih folder PC": "📁 Choose PC folder", "📱 Hubungkan HP": "📱 Connect phone", "Reset filter": "Reset filters",
+    "Tidak ada file yang cocok": "No matching files",
+    "Coba kategori lain, kata kunci lain, atau reset filter.": "Try another category or search term, or reset the filters.",
+    "Tidak ada file di sini": "No files here",
+    "Folder ini kosong atau semua file sudah dipisahkan.\n"
+    "Aktifkan “Sertakan subfolder” di ⚙ Opsi untuk ikut membaca subfolder.":
+        "This folder is empty, or everything in it has been organized.\n"
+        "Turn on “Include subfolders” in ⚙ Options to read subfolders too.",
+    "Mulai dengan memilih sumber file": "Start by choosing where your files are",
+    "Pilih folder di PC, atau hubungkan HP Android lewat kabel USB/OTG.\n"
+    "Ctrl+O pilih folder  ·  F5 scan ulang  ·  Ctrl+F cari":
+        "Choose a folder on the PC, or connect an Android phone with a USB/OTG cable.\n"
+        "Ctrl+O choose folder  ·  F5 rescan  ·  Ctrl+F search",
+    "{} file · {}": "{} files · {}", "tampil {} ({})": "showing {} ({})",
+    "🔒 {} dilindungi/dikecualikan, tidak akan diproses": "🔒 {} protected/excluded, will not be processed",
+    # options menu
+    "Jika nama file sudah ada:": "If the file name already exists:",
+    "Buat nama baru": "Create a new name", "Lewati": "Skip", "Timpa": "Overwrite",
+    "Sertakan subfolder": "Include subfolders",
+    "Lewati folder sistem & tersembunyi (Android/data, .thumbnails, …)":
+        "Skip system & hidden folders (Android/data, .thumbnails, …)",
+    "Subfolder Android (WhatsApp, Kamera, Screenshot…)": "Android subfolders (WhatsApp, Camera, Screenshots…)",
+    "Kecualikan folder…": "Exclude folders…",
+    "🔒 Lindungi data aplikasi (backup WhatsApp, database, .nomedia)":
+        "🔒 Protect app data (WhatsApp backups, databases, .nomedia)",
+    "Hapus semua pengecualian manual…": "Clear all manual exclusions…", "Buka log": "Open log",
+    # status line
+    "Tunggu proses selesai dulu — koneksi HP sedang dipakai.":
+        "Wait for the current task to finish — the phone connection is in use.",
+    "Membuka lokasi {}…": "Opening the location of {}…", "Lokasi {} dibuka di Explorer.": "{} shown in Explorer.",
+    "Folder {} dikecualikan (tersimpan).": "Folder {} excluded (saved).",
+    "{} file dikecualikan (tersimpan).": "{} file(s) excluded (saved).",
+    "Pengecualian dihapus untuk {} file.": "Exclusion removed for {} file(s).",
+    "Dihentikan.": "Stopped.", "Terjadi error.": "An error occurred.", "Dihentikan paksa.": "Force-stopped.",
+    "Menghentikan setelah file ini…  (klik Stop lagi untuk paksa)":
+        "Stopping after this file…  (click Stop again to force)",
+    "Membaca HP… {} file  ·  {}": "Reading phone… {} files  ·  {}", "Membaca folder… {} file": "Reading folder… {} files",
+    "Membaca HP… (biarkan layar HP tetap menyala)": "Reading phone… (keep the phone's screen on)",
+    "Membaca folder…": "Reading folder…", "Menyiapkan preview…": "Preparing preview…", "Memproses…": "Processing…",
+    "{}/{}  ·  berhasil {}  ·  dilewati {}  ·  gagal {}": "{}/{}  ·  done {}  ·  skipped {}  ·  failed {}",
+    "Menunggu & memeriksa transfer yang tiba terlambat…": "Waiting for and checking late transfers…",
+    "Berhasil {}  ·  dilewati {}  ·  gagal {}": "Done {}  ·  skipped {}  ·  failed {}",
+    "Dihentikan — ": "Stopped — ", "Selesai — ": "Finished — ",
+    "Mencari duplikat — {} {}/{}": "Finding duplicates — {} {}/{}", "cek awal file": "checking file starts",
+    "hash penuh": "full hash", "Mencari duplikat…": "Finding duplicates…",
+    "Pencarian duplikat dihentikan.": "Duplicate search stopped.", "Tidak ada duplikat — ": "No duplicates — ",
+    "{} duplikat dalam {} grup.": "{} duplicate(s) in {} group(s).",
+    # filters
+    "{} harus berupa angka.": "{} must be a number.", "{} tidak boleh negatif.": "{} cannot be negative.",
+    "Min MB tidak boleh lebih besar dari Max MB.": "Min MB cannot be larger than Max MB.",
+    "{} harus YYYY-MM-DD.": "{} must be YYYY-MM-DD.", "Tanggal Dari": "From date", "Tanggal Sampai": "To date",
+    "Tanggal Dari tidak boleh lebih besar dari Tanggal Sampai.": "The From date cannot be after the To date.",
+    # dialogs
+    "Pilih folder sumber": "Choose the source folder",
+    "belum dipilih — ditanyakan saat memisahkan": "not chosen yet — asked when organizing",
+    "Pilih folder di PC untuk menyimpan file dari HP": "Choose a PC folder for the phone's files",
+    'Klik "Folder PC" atau "HP / OTG" untuk memilih sumber file.':
+        'Click "PC Folder" or "Phone / OTG" to choose where your files are.',
+    "Folder tidak valid": "Invalid folder", "Folder tidak ditemukan:\n{}": "Folder not found:\n{}",
+    "Pengecualian": "Exclusions", "Belum ada file atau folder yang dikecualikan.": "No files or folders are excluded yet.",
+    "Hapus semua pengecualian": "Clear all exclusions",
+    "Hapus {} pengecualian? File-file itu akan ikut diproses lagi (data aplikasi yang dilindungi tetap aman).":
+        "Clear {} exclusion(s)? Those files will be processed again (protected app data stays safe).",
+    "Kecualikan folder": "Exclude folders",
+    "Untuk HP, pilih langsung folder yang ingin dibaca lewat 📱 HP / OTG.":
+        "For a phone, choose the folder to read directly with 📱 Phone / OTG.",
+    "Tidak ada yang diproses": "Nothing to process",
+    "Semua {} file ini dilindungi atau dikecualikan.": "All {} of these files are protected or excluded.",
+    "Konfirmasi": "Confirm", "buat nama baru": "create a new name", "lewati": "skip", "timpa": "overwrite",
+    "aktif": "on", "nonaktif": "off",
+    "MEMINDAHKAN {} file dari HP ke folder kategori di:\n{}":
+        "MOVING {} file(s) from the phone into category folders in:\n{}",
+    "MENYALIN {} file dari HP ke folder kategori di:\n{}":
+        "COPYING {} file(s) from the phone into category folders in:\n{}",
+    "(file di HP akan dihapus setelah tersalin)": "(the files on the phone are deleted once copied)",
+    "MEMINDAHKAN {} file ke folder kategori di:\n{}": "MOVING {} file(s) into category folders in:\n{}",
+    "MENYALIN {} file ke folder kategori di:\n{}": "COPYING {} file(s) into category folders in:\n{}",
+    "Jika nama sudah ada: {}.": "If a name already exists: {}.", "Subfolder Android: {}.": "Android subfolders: {}.",
+    "🔒 {} file dilindungi/dikecualikan tidak akan disentuh.":
+        "🔒 {} protected/excluded file(s) will not be touched.",
+    "Klik Preview untuk memeriksa tujuan setiap file lebih dulu.": "Click Preview to check where each file goes first.",
+    "Media WhatsApp": "WhatsApp media",
+    "{} file adalah media WhatsApp. Kalau dipindahkan, foto/video/dokumen itu "
+    "akan tampil buram atau hilang di dalam chat WhatsApp.\n\n"
+    "Ya — ganti ke SALIN (disarankan, HP tidak berubah)\n"
+    "Tidak — tetap PINDAHKAN\n"
+    "Batal — jangan lakukan apa pun":
+        "{} file(s) are WhatsApp media. If they are moved, those photos/videos/documents "
+        "show up blurry or missing inside WhatsApp chats.\n\n"
+        "Yes — switch to COPY (recommended, the phone stays unchanged)\n"
+        "No — MOVE anyway\n"
+        "Cancel — do nothing",
+    "Berhasil: {}\nDilewati: {}\nGagal: {}\n\nLog: {}": "Succeeded: {}\nSkipped: {}\nFailed: {}\n\nLog: {}",
+    "Yang gagal:": "Failed files:", "… dan {} lainnya (lihat log)": "… and {} more (see the log)",
+    "File yang gagal masih ada di HP — scan ulang lalu jalankan lagi untuk mencobanya.":
+        "The failed files are still on the phone — rescan and run again to retry them.",
+    "⚠ {} file tertahan di folder staging (sudah tersalin, belum dipindah ke kategori):\n{}":
+        "⚠ {} file(s) are stuck in the staging folder (copied, not yet moved into a category):\n{}",
+    "Proses dihentikan otomatis": "Stopped automatically", "Operasi dihentikan": "Stopped",
+    "Operasi dihentikan dengan aman.": "The run was stopped safely.",
+    "Selesai dengan masalah": "Finished with problems", "Operasi selesai, tapi ada yang gagal.": "Finished, but some files failed.",
+    "Selesai": "Done", "Operasi selesai.": "Finished.",
+    "Mencari duplikat perlu membaca isi setiap file — terlalu lambat lewat kabel MTP.\n\n"
+    "Salin file dari HP ke PC dulu, lalu buka folder tujuan lewat 📁 Folder PC dan cari duplikat di sana.":
+        "Finding duplicates means reading every file — far too slow over an MTP cable.\n\n"
+        "Copy the files from the phone to the PC first, then open that folder with 📁 PC Folder "
+        "and look for duplicates there.",
+    "Tidak ada duplikat": "No duplicates", "Semua file yang tampil di tabel unik.": "Every file shown in the table is unique.",
+    "Memindahkan {} file duplikat ke:\n{}\n\nFile yang disimpan tetap di tempatnya. Tidak ada file yang dihapus.":
+        "Move {} duplicate file(s) to:\n{}\n\nThe files that are kept stay where they are. Nothing is deleted.",
+    "Log belum ada": "No log yet",
+    "Log dibuat setelah file dipindahkan atau disalin.": "A log is created once files have been moved or copied.",
+    # preview, duplicates, exclude-folders and phone windows
+    "Preview — {} file → {}": "Preview — {} file(s) → {}", "{} akan diberi nama baru": "{} will get a new name",
+    "Aksi": "Action", "Sumber": "Source", "Ke": "To", "Tutup": "Close",
+    "Duplikat Ditemukan": "Duplicates Found",
+    "{} file duplikat dalam {} grup  ·  bisa hemat {}": "{} duplicate file(s) in {} group(s)  ·  {} can be freed",
+    "Isi file identik byte-per-byte (SHA-256). File tertua di tiap grup disimpan, "
+    "sisanya dipindah ke folder {}\\ — tidak ada yang dihapus. Klik dua kali untuk membuka lokasi file.":
+        "Identical byte for byte (SHA-256). The oldest file in each group is kept; the others move to the "
+        "{}\\ folder — nothing is deleted. Double-click to show a file's location.",
+    "Lokasi": "Location", "Grup {} — {} file identik": "Group {} — {} identical files",
+    "Simpan": "Keep", "Duplikat": "Duplicate", "Pindahkan {} duplikat ke {}\\": "Move {} duplicate(s) to {}\\",
+    "Kecualikan Folder": "Exclude Folders",
+    "Pilih folder yang tidak boleh diproses.": "Choose the folders that must not be processed.",
+    "Folder buatan aplikasi (Images, Videos, Duplicates, dll.) selalu dikecualikan.":
+        "Folders the app creates (Images, Videos, Duplicates, …) are always excluded.",
+    "Pilih Semua": "Select All", "Batal Pilihan": "Clear Selection", "Terapkan": "Apply",
+    "Pilih Folder di HP": "Choose a Folder on the Phone", "Pilih folder di HP": "Choose a folder on the phone",
+    "⟳ Muat ulang": "⟳ Reload", "Pilih folder ini": "Choose this folder", "Batal": "Cancel",
+    "Mencari perangkat…": "Looking for devices…", "Memuat…": "Loading…",
+    "Buka perangkat lalu pilih folder, misalnya DCIM atau Android/media/com.whatsapp. Subfolder ikut dibaca.":
+        "Open a device, then choose a folder, e.g. DCIM or Android/media/com.whatsapp. Subfolders are read too.",
+    "Tidak ada HP terdeteksi. Hubungkan HP dengan kabel USB/OTG, buka kunci layar, lalu pilih mode USB "
+    "“Transfer file / MTP”. Setelah itu klik Muat ulang.\n\nFlashdisk OTG atau HP mode penyimpanan punya "
+    "huruf drive — pilih lewat 📁 Folder PC.":
+        "No phone found. Connect it with a USB/OTG cable, unlock the screen and choose the USB mode "
+        "“File transfer / MTP”. Then click Reload.\n\nAn OTG flash drive or a phone in storage mode has "
+        "a drive letter — choose it with 📁 PC Folder.",
+    # errors from file operations and the phone connection
+    "Terlalu banyak nama file sama: {}": "Too many files with the same name: {}",
+    "Lokasi file tidak ditemukan:\n{}": "File location not found:\n{}",
+    "Explorer tidak bisa membuka lokasi:\n{}": "Explorer could not open the location:\n{}",
+    "Sumber tidak ditemukan.": "Source not found.",
+    "HP/Windows tidak merespons {} detik — koneksi dimulai ulang.":
+        "The phone/Windows did not respond for {} s — the connection was restarted.",
+    "Koneksi ke Windows Shell terputus.": "The connection to the Windows Shell was lost.",
+    "dibatalkan: lebih dari {} detik belum selesai": "cancelled: not finished after {} s",
+    "tidak ada aktivitas transfer selama {} detik": "no transfer activity for {} s",
+    "ukuran dilaporkan HP {} B, diterima {} B": "phone reported {} B, received {} B",
+    "tersalin tidak lengkap ({} dari {} B)": "copied incompletely ({} of {} B)",
+    "HP tidak merespons lagi setelah {} file berturut-turut gagal, jadi proses dihentikan otomatis.\n\n"
+    "Cabut-colok kabel, buka kunci layar HP, pilih “Transfer file”, lalu scan ulang dan jalankan lagi. "
+    "File yang sudah berhasil tidak akan diproses ulang; file yang gagal masih ada di HP.":
+        "The phone stopped responding after {} files in a row failed, so the run was stopped automatically.\n\n"
+        "Unplug and replug the cable, unlock the phone, choose “File transfer”, then rescan and run again. "
+        "Files that already succeeded are not processed again; the failed ones are still on the phone.",
+    "dipulihkan: tiba setelah percobaannya dianggap gagal": "recovered: arrived after its attempt was written off",
+    # sent by PS_BRIDGE (see bridge_message)
+    "Tidak ditemukan: {}": "Not found: {}", "Folder staging tidak ada: {}": "Staging folder missing: {}",
+    "File tidak mulai tersalin dalam {} detik: {}": "File did not start copying within {} s: {}",
+    "Penyalinan macet: {}": "Copy stalled: {}",
+    "Explorer tidak membuka folder HP dalam 15 detik.": "Explorer did not open the phone folder within 15 seconds.",
+    "Perintah tidak dikenal: {}": "Unknown command: {}",
+}
+# Messages the PowerShell bridge writes (Indonesian, with {} for the variable part).
+BRIDGE_MESSAGES = ("Tidak ditemukan: {}", "Folder staging tidak ada: {}", "File tidak mulai tersalin dalam {} detik: {}",
+                   "Penyalinan macet: {}", "Explorer tidak membuka folder HP dalam 15 detik.", "Perintah tidak dikenal: {}")
+
+
+def T(s: str, *args) -> str:
+    """UI text in the chosen language; args fill the {} slots."""
+    s = EN.get(s, s) if LANG == "English" else s
+    return s.format(*args) if args else s
+
+
+def bridge_message(text: str) -> str:
+    """A bridge error in the UI language when it's one of ours; Windows' own text as is."""
+    for template in BRIDGE_MESSAGES:
+        m = re.fullmatch(re.escape(template).replace(r"\{\}", "(.*)"), text, re.S)
+        if m:
+            return T(template, *m.groups())
+    return text
 
 
 class Exclusions:
@@ -246,7 +468,7 @@ def unique_destination(folder: Path, filename: str, reserved: set[Path] | None =
         target = folder / f"{p.stem} ({n}){p.suffix}"
         if not target.exists() and target not in reserved:
             return target
-    raise RuntimeError(f"Terlalu banyak nama file sama: {filename}")
+    raise RuntimeError(T("Terlalu banyak nama file sama: {}", filename))
 
 
 def normalized_path(path: Path) -> Path:
@@ -498,11 +720,11 @@ def reveal_in_explorer(target: str):
     try:
         pidl = ctypes.c_void_p()
         if shell32.SHParseDisplayName(target, None, ctypes.byref(pidl), 0, None) < 0:
-            raise OSError(f"Lokasi file tidak ditemukan:\n{target}")
+            raise OSError(T("Lokasi file tidak ditemukan:\n{}", target))
         try:
             # With no child items, the PIDL itself is the item to select in its parent folder.
             if shell32.SHOpenFolderAndSelectItems(pidl, 0, None, 0) < 0:
-                raise OSError(f"Explorer tidak bisa membuka lokasi:\n{target}")
+                raise OSError(T("Explorer tidak bisa membuka lokasi:\n{}", target))
         finally:
             ole32.CoTaskMemFree(pidl)
     finally:
@@ -586,7 +808,7 @@ def execute_operations(records, mode: str, conflict: str, stop_event: threading.
                 if not local.is_file():
                     skipped += 1
                     status = "MISSING"
-                    error = "Sumber tidak ditemukan."
+                    error = T("Sumber tidak ditemukan.")
                 else:
                     dest_dir.mkdir(parents=True, exist_ok=True)
                     overwrite = final_dest.exists()
@@ -912,17 +1134,17 @@ class ShellBridge:
                     line = self.lines.get(timeout=timeout)
                 except queue.Empty:
                     self.close()
-                    raise RuntimeError(f"HP/Windows tidak merespons {timeout} detik — "
-                                       "koneksi dimulai ulang.") from None
+                    raise RuntimeError(T("HP/Windows tidak merespons {} detik — koneksi dimulai ulang.",
+                                         f"{timeout:.0f}")) from None
                 if line is None:
-                    raise RuntimeError("Koneksi ke Windows Shell terputus.")
+                    raise RuntimeError(T("Koneksi ke Windows Shell terputus."))
                 kind, _, rest = line.rstrip("\r\n").partition("\t")
                 if kind == "h":  # heartbeat from a copy in progress
                     continue
                 if kind == "end":
                     return lines
                 if kind == "err":
-                    raise RuntimeError(rest)
+                    raise RuntimeError(bridge_message(rest))
                 lines.append(rest)
                 if on_line:
                     on_line(len(lines), rest)
@@ -1089,8 +1311,8 @@ class CopyWatch:
                 # Windows to wind it down before this attempt is reported as failed.
                 if cancel_at is None:
                     cancel_at = now
-                    self.reason = self.reason or (f"dibatalkan: lebih dari {int(self.max_busy)} detik "
-                                                  "belum selesai")
+                    self.reason = self.reason or T("dibatalkan: lebih dari {} detik belum selesai",
+                                                   int(self.max_busy))
                     for hwnd, _ in progress:
                         self._press_cancel(hwnd)
                 elif now - cancel_at > 30:
@@ -1098,7 +1320,7 @@ class CopyWatch:
                     return
             elif not progress and now - alive_at > self.limit:
                 # No progress window, no data: nothing is running for this attempt any more.
-                self.reason = self.reason or f"tidak ada aktivitas transfer selama {self.limit} detik"
+                self.reason = self.reason or T("tidak ada aktivitas transfer selama {} detik", self.limit)
                 self.bridge.close()  # ends the attempt; the next call gets a fresh bridge
                 return
 
@@ -1355,11 +1577,11 @@ class PreviewWindow(tk.Toplevel):
 
         counts = Counter(r["category"] for r in records)
         renames = sum(r["action"] == "RENAME" for r in records)
-        ttk.Label(self, text=f"Preview — {len(records):,} file → {dest}", style="Heading.TLabel").pack(
+        ttk.Label(self, text=T("Preview — {} file → {}", f"{len(records):,}", dest), style="Heading.TLabel").pack(
             anchor="w", padx=16, pady=(14, 2))
         summary = "  ·  ".join(f"{cat.replace('/', ' › ')}: {n:,}" for cat, n in sorted(counts.items()))
         if renames:
-            summary += f"   |   {renames:,} akan diberi nama baru"
+            summary += "   |   " + T("{} akan diberi nama baru", f"{renames:,}")
         ttk.Label(self, text=summary, style="CardMuted.TLabel", wraplength=parent.px(1000)).pack(
             anchor="w", padx=16, pady=(0, 10))
 
@@ -1368,7 +1590,7 @@ class PreviewWindow(tk.Toplevel):
         cols = ("action", "category", "source", "destination")
         tree = make_tree(
             frame, cols,
-            {"action": "Aksi", "category": "Tujuan", "source": "Sumber", "destination": "Ke"},
+            {"action": T("Aksi"), "category": T("Tujuan"), "source": T("Sumber"), "destination": T("Ke")},
             {"action": parent.px(110), "category": parent.px(190),
              "source": parent.px(340), "destination": parent.px(380)},
         )
@@ -1387,13 +1609,13 @@ class PreviewWindow(tk.Toplevel):
             "values": (r["action"], r["category"].replace("/", " › "), sources[i], targets[i]),
         }) for i, r in enumerate(records)))
 
-        ttk.Button(self, text="Tutup", command=self.destroy).pack(pady=(0, 14))
+        ttk.Button(self, text=T("Tutup"), command=self.destroy).pack(pady=(0, 14))
 
 
 class DuplicateWindow(tk.Toplevel):
     def __init__(self, parent, groups: list[list[Entry]], source: Path, callback):
         super().__init__(parent, bg=Style.CARD)
-        self.title("Duplikat Ditemukan")
+        self.title(T("Duplikat Ditemukan"))
         self.geometry(f"{parent.px(1040)}x{parent.px(620)}")
         self.transient(parent)
         self.grab_set()
@@ -1402,12 +1624,12 @@ class DuplicateWindow(tk.Toplevel):
 
         dup_count = sum(len(g) - 1 for g in groups)
         wasted = sum(g[0].size * (len(g) - 1) for g in groups)
-        ttk.Label(self, text=f"{dup_count:,} file duplikat dalam {len(groups):,} grup  ·  "
-                             f"bisa hemat {human_size(wasted)}",
+        ttk.Label(self, text=T("{} file duplikat dalam {} grup  ·  bisa hemat {}",
+                               f"{dup_count:,}", f"{len(groups):,}", human_size(wasted)),
                   style="Heading.TLabel").pack(anchor="w", padx=16, pady=(14, 2))
-        ttk.Label(self, text="Isi file identik byte-per-byte (SHA-256). File tertua di tiap grup "
-                             f"disimpan, sisanya dipindah ke folder {DUPLICATES_DIR}\\ — tidak ada "
-                             "yang dihapus. Klik dua kali untuk membuka lokasi file.",
+        ttk.Label(self, text=T("Isi file identik byte-per-byte (SHA-256). File tertua di tiap grup disimpan, "
+                               "sisanya dipindah ke folder {}\\ — tidak ada yang dihapus. "
+                               "Klik dua kali untuk membuka lokasi file.", DUPLICATES_DIR),
                   style="CardMuted.TLabel", wraplength=parent.px(1000)).pack(anchor="w", padx=16, pady=(0, 10))
 
         frame = ttk.Frame(self, style="Card.TFrame")
@@ -1415,7 +1637,7 @@ class DuplicateWindow(tk.Toplevel):
         cols = ("status", "size", "modified", "path")
         tree = make_tree(
             frame, cols,
-            {"status": "Status", "size": "Ukuran", "modified": "Diubah", "path": "Lokasi"},
+            {"status": "Status", "size": T("Ukuran"), "modified": T("Diubah"), "path": T("Lokasi")},
             {"status": parent.px(90), "size": parent.px(90),
              "modified": parent.px(130), "path": parent.px(420)},
             show="tree headings", anchors={"status": "center", "size": "e"},
@@ -1431,12 +1653,12 @@ class DuplicateWindow(tk.Toplevel):
         def rows():
             for n, g in enumerate(groups):
                 yield "", f"g{n}", {"open": True, "tags": ("group",),
-                                    "text": f"Grup {n + 1} — {len(g)} file identik",
+                                    "text": T("Grup {} — {} file identik", n + 1, len(g)),
                                     "values": ("", f"−{human_size(g[0].size * (len(g) - 1))}", "", "")}
                 for i, e in enumerate(g):
                     yield f"g{n}", f"g{n}.{i}", {
                         "text": e.path.name, "tags": ("keep" if i == 0 else "dup",),
-                        "values": ("Simpan" if i == 0 else "Duplikat", human_size(e.size),
+                        "values": (T("Simpan") if i == 0 else T("Duplikat"), human_size(e.size),
                                    fmt_time(e.mtime), rel_path(e.path, source))}
 
         path_width = text_width(parent.cell_font, (rel_path(p, source) for p in self.paths.values()))
@@ -1448,9 +1670,9 @@ class DuplicateWindow(tk.Toplevel):
 
         bar = ttk.Frame(self, style="Card.TFrame")
         bar.pack(fill="x", padx=16, pady=(0, 14))
-        ttk.Button(bar, text=f"Pindahkan {dup_count:,} duplikat ke {DUPLICATES_DIR}\\",
+        ttk.Button(bar, text=T("Pindahkan {} duplikat ke {}\\", f"{dup_count:,}", DUPLICATES_DIR),
                    style="Primary.TButton", command=self.move).pack(side="right")
-        ttk.Button(bar, text="Tutup", command=self.destroy).pack(side="right", padx=8)
+        ttk.Button(bar, text=T("Tutup"), command=self.destroy).pack(side="right", padx=8)
 
     def move(self):
         self.destroy()
@@ -1460,16 +1682,16 @@ class DuplicateWindow(tk.Toplevel):
 class ExcludeFoldersWindow(tk.Toplevel):
     def __init__(self, parent, source: Path, current: set[str], callback):
         super().__init__(parent, bg=Style.CARD)
-        self.title("Kecualikan Folder")
+        self.title(T("Kecualikan Folder"))
         self.geometry(f"{parent.px(600)}x{parent.px(500)}")
         self.transient(parent)
         self.grab_set()
         self.callback = callback
         self.source = source
 
-        ttk.Label(self, text="Pilih folder yang tidak boleh diproses.",
+        ttk.Label(self, text=T("Pilih folder yang tidak boleh diproses."),
                   style="Heading.TLabel").pack(anchor="w", padx=16, pady=(14, 2))
-        ttk.Label(self, text="Folder buatan aplikasi (Images, Videos, Duplicates, dll.) selalu dikecualikan.",
+        ttk.Label(self, text=T("Folder buatan aplikasi (Images, Videos, Duplicates, dll.) selalu dikecualikan."),
                   style="CardMuted.TLabel").pack(anchor="w", padx=16, pady=(0, 10))
 
         frame = ttk.Frame(self, style="Card.TFrame")
@@ -1503,9 +1725,9 @@ class ExcludeFoldersWindow(tk.Toplevel):
 
         bar = ttk.Frame(self, style="Card.TFrame")
         bar.pack(fill="x", padx=16, pady=14)
-        ttk.Button(bar, text="Pilih Semua", command=lambda: self.listbox.select_set(0, "end")).pack(side="left")
-        ttk.Button(bar, text="Batal Pilihan", command=lambda: self.listbox.selection_clear(0, "end")).pack(side="left", padx=6)
-        ttk.Button(bar, text="Terapkan", style="Primary.TButton", command=self.apply).pack(side="right")
+        ttk.Button(bar, text=T("Pilih Semua"), command=lambda: self.listbox.select_set(0, "end")).pack(side="left")
+        ttk.Button(bar, text=T("Batal Pilihan"), command=lambda: self.listbox.selection_clear(0, "end")).pack(side="left", padx=6)
+        ttk.Button(bar, text=T("Terapkan"), style="Primary.TButton", command=self.apply).pack(side="right")
 
     def apply(self):
         selected = {self.folders[i] for i in self.listbox.curselection()}
@@ -1521,12 +1743,12 @@ class DeviceBrowser(tk.Toplevel):
         super().__init__(parent, bg=Style.CARD)
         self.app = parent
         self.callback = callback
-        self.title("Pilih Folder di HP")
+        self.title(T("Pilih Folder di HP"))
         self.geometry(f"{parent.px(560)}x{parent.px(500)}")
         self.transient(parent)
         self.grab_set()
 
-        ttk.Label(self, text="Pilih folder di HP", style="Heading.TLabel").pack(anchor="w", padx=16, pady=(14, 2))
+        ttk.Label(self, text=T("Pilih folder di HP"), style="Heading.TLabel").pack(anchor="w", padx=16, pady=(14, 2))
         self.hint = ttk.Label(self, style="CardMuted.TLabel", wraplength=parent.px(520), justify="left")
         self.hint.pack(anchor="w", padx=16, pady=(0, 10))
 
@@ -1539,11 +1761,11 @@ class DeviceBrowser(tk.Toplevel):
 
         bar = ttk.Frame(self, style="Card.TFrame")
         bar.pack(fill="x", padx=16, pady=14)
-        ttk.Button(bar, text="⟳ Muat ulang", command=self.reload).pack(side="left")
-        self.ok_btn = ttk.Button(bar, text="Pilih folder ini", style="Primary.TButton", command=self.choose)
+        ttk.Button(bar, text=T("⟳ Muat ulang"), command=self.reload).pack(side="left")
+        self.ok_btn = ttk.Button(bar, text=T("Pilih folder ini"), style="Primary.TButton", command=self.choose)
         self.ok_btn.pack(side="right")
         self.ok_btn.state(["disabled"])
-        ttk.Button(bar, text="Batal", command=self.destroy).pack(side="right", padx=8)
+        ttk.Button(bar, text=T("Batal"), command=self.destroy).pack(side="right", padx=8)
         self.pending = 0
         self.bind("<Destroy>", self._on_destroy)
         self.reload()
@@ -1555,7 +1777,7 @@ class DeviceBrowser(tk.Toplevel):
 
     def reload(self):
         self.tree.delete(*self.tree.get_children())
-        self.hint.configure(text="Mencari perangkat…")
+        self.hint.configure(text=T("Mencari perangkat…"))
         self._load("")
 
     def _load(self, iid):
@@ -1570,18 +1792,18 @@ class DeviceBrowser(tk.Toplevel):
         if iid:
             self.tree.delete(*[k for k in self.tree.get_children(iid) if k.endswith(self.LOADING)])
         elif names:
-            self.hint.configure(text="Buka perangkat lalu pilih folder, misalnya DCIM atau "
-                                     "Android/media/com.whatsapp. Subfolder ikut dibaca.")
+            self.hint.configure(text=T("Buka perangkat lalu pilih folder, misalnya DCIM atau "
+                                       "Android/media/com.whatsapp. Subfolder ikut dibaca."))
         else:
-            self.hint.configure(text="Tidak ada HP terdeteksi. Hubungkan HP dengan kabel USB/OTG, "
-                                     "buka kunci layar, lalu pilih mode USB “Transfer file / MTP”. "
-                                     "Setelah itu klik Muat ulang.\n\nFlashdisk OTG atau HP mode "
-                                     "penyimpanan punya huruf drive — pilih lewat 📁 Folder PC.")
+            self.hint.configure(text=T("Tidak ada HP terdeteksi. Hubungkan HP dengan kabel USB/OTG, "
+                                       "buka kunci layar, lalu pilih mode USB “Transfer file / MTP”. "
+                                       "Setelah itu klik Muat ulang.\n\nFlashdisk OTG atau HP mode "
+                                       "penyimpanan punya huruf drive — pilih lewat 📁 Folder PC."))
             return
         for name in names:
             child = f"{iid}{SEP}{name}" if iid else name
             self.tree.insert(iid, "end", iid=child, text=("📁 " if iid else "📱 ") + name)
-            self.tree.insert(child, "end", iid=child + self.LOADING, text="Memuat…")
+            self.tree.insert(child, "end", iid=child + self.LOADING, text=T("Memuat…"))
 
     def _on_open(self, event):
         iid = self.tree.focus()
@@ -1601,6 +1823,9 @@ class App(tk.Tk):
                 "modified": "Diubah", "path": "Folder"}
 
     def __init__(self):
+        global LANG
+        lang = load_settings().get("lang")
+        LANG = lang if lang in LANGS else "English"  # before any text is built
         super().__init__()
         scale = self.winfo_fpixels("1i") / 96
         self.px = lambda n: int(n * scale)
@@ -1628,6 +1853,7 @@ class App(tk.Tk):
         self.protect_var = tk.BooleanVar(value=True)
         self.exclusions = Exclusions(CONFIG_DIR / "exclusions.json")
         self.category_var = tk.StringVar(value="")
+        self.lang_var = tk.StringVar(value=LANG)
         self.search_var = tk.StringVar(value="")
         self.ext_var = tk.StringVar(value="")
         self.min_var = tk.StringVar(value="")
@@ -1635,7 +1861,7 @@ class App(tk.Tk):
         self.from_var = tk.StringVar(value="")
         self.to_var = tk.StringVar(value="")
         self.exclude_var = tk.StringVar(value="")
-        self.status = tk.StringVar(value="Pilih folder di PC atau hubungkan HP untuk mulai.")
+        self.status = tk.StringVar(value=T("Pilih folder di PC atau hubungkan HP untuk mulai."))
 
         self.all_files: list[Entry] = []
         self.filtered_files: list[Entry] = []
@@ -1727,9 +1953,9 @@ class App(tk.Tk):
         # a single window (children ride along) instead of repainting each button.
         pickers = ttk.Frame(head)
         pickers.pack(side="right")
-        self.folder_btn = ttk.Button(pickers, text="📁 Folder PC", command=self.choose_folder)
+        self.folder_btn = ttk.Button(pickers, text=T("📁 Folder PC"), command=self.choose_folder)
         self.folder_btn.pack(side="left")
-        self.phone_btn = ttk.Button(pickers, text="📱 HP / OTG", command=self.choose_device)
+        self.phone_btn = ttk.Button(pickers, text=T("📱 HP / OTG"), command=self.choose_device)
         self.phone_btn.pack(side="left", padx=6)
         self.scan_btn = ttk.Button(pickers, text="⟳", width=3, command=self.scan)
         self.scan_btn.pack(side="left")
@@ -1741,10 +1967,10 @@ class App(tk.Tk):
 
         # Destination row, only when importing from a phone.
         self.dest_row = ttk.Frame(outer)
-        ttk.Label(self.dest_row, text="Simpan ke PC:", style="Muted.TLabel").pack(side="left", padx=(28, 6))
+        ttk.Label(self.dest_row, text=T("Simpan ke PC:"), style="Muted.TLabel").pack(side="left", padx=(28, 6))
         self.dest_lbl = ttk.Label(self.dest_row, text="", style="Bg.TLabel")
         self.dest_lbl.pack(side="left")
-        ttk.Button(self.dest_row, text="Ubah…", style="Link.TButton", command=self.choose_dest).pack(side="left", padx=8)
+        ttk.Button(self.dest_row, text=T("Ubah…"), style="Link.TButton", command=self.choose_dest).pack(side="left", padx=8)
 
         # Toolbar: category chips · search · filter · options.
         self.toolbar = ttk.Frame(outer)
@@ -1772,11 +1998,11 @@ class App(tk.Tk):
         self.filter_btn = ttk.Button(tools, text="Filter ▾", command=self.toggle_filters)
         self.filter_btn.pack(side="left", padx=6)
         self.options_menu = self._options_menu(self)
-        self.opt_btn = ttk.Button(tools, text="⚙ Opsi ▾", command=lambda: self.options_menu.tk_popup(
+        self.opt_btn = ttk.Button(tools, text=T("⚙ Opsi ▾"), command=lambda: self.options_menu.tk_popup(
             self.opt_btn.winfo_rootx(), self.opt_btn.winfo_rooty() + self.opt_btn.winfo_height()))
         self.opt_btn.pack(side="left")
         # Placeholder text: shown while the box is empty and not focused.
-        self.search_hint = ttk.Label(tools, text="Cari nama file…", style="Placeholder.TLabel")
+        self.search_hint = ttk.Label(tools, text=T("Cari nama file…"), style="Placeholder.TLabel")
         self.search_hint.bind("<Button-1>", lambda e: self.search_entry.focus_set())
         for event in ("<FocusIn>", "<FocusOut>"):
             self.search_entry.bind(event, lambda e: self.after_idle(self._update_search_hint), add="+")
@@ -1788,9 +2014,9 @@ class App(tk.Tk):
         for label, var, width in (("Ekstensi", self.ext_var, 16), ("Min MB", self.min_var, 7),
                                   ("Max MB", self.max_var, 7), ("Dari", self.from_var, 11),
                                   ("Sampai", self.to_var, 11)):
-            ttk.Label(self.filter_panel, text=label, style="CardMuted.TLabel").pack(side="left", padx=(0, 5))
+            ttk.Label(self.filter_panel, text=T(label), style="CardMuted.TLabel").pack(side="left", padx=(0, 5))
             ttk.Entry(self.filter_panel, textvariable=var, width=width).pack(side="left", padx=(0, 14))
-        ttk.Label(self.filter_panel, text="mis. .jpg,.pdf · tanggal YYYY-MM-DD",
+        ttk.Label(self.filter_panel, text=T("mis. .jpg,.pdf · tanggal YYYY-MM-DD"),
                   style="CardMuted.TLabel").pack(side="left")
         ttk.Button(self.filter_panel, text="Reset", command=self.reset_filters).pack(side="right")
 
@@ -1801,7 +2027,7 @@ class App(tk.Tk):
         actions.pack(side="right")
         seg = ttk.Frame(actions, style="Card.TFrame")
         seg.pack(side="left", padx=(0, 16))
-        self.dup_btn = ttk.Button(actions, text="Cari duplikat", command=self.scan_duplicates)
+        self.dup_btn = ttk.Button(actions, text=T("Cari duplikat"), command=self.scan_duplicates)
         self.dup_btn.pack(side="left")
         self.preview_btn = ttk.Button(actions, text="Preview", command=self.preview)
         self.preview_btn.pack(side="left", padx=8)
@@ -1809,7 +2035,7 @@ class App(tk.Tk):
         self.go_btn.pack(side="left")
         self.mode_buttons = []
         for text, value in (("Pindahkan", "MOVE"), ("Salin", "COPY")):
-            b = ttk.Radiobutton(seg, text=text, value=value, variable=self.mode_var,
+            b = ttk.Radiobutton(seg, text=T(text), value=value, variable=self.mode_var,
                                 style="Seg.Toolbutton", command=self._update_go_button)
             b.pack(side="left")
             self.mode_buttons.append(b)
@@ -1843,14 +2069,14 @@ class App(tk.Tk):
         self.bind("<F5>", lambda e: self.scan())
 
         self.context_menu = tk.Menu(self, tearoff=False)
-        self.context_menu.add_command(label="Pisahkan yang dipilih", command=self.organize)
-        self.context_menu.add_command(label="Buka lokasi file", command=self._reveal_selected)
-        self.context_menu.add_command(label="Salin path", command=self._copy_paths)
+        self.context_menu.add_command(label=T("Pisahkan yang dipilih"), command=self.organize)
+        self.context_menu.add_command(label=T("Buka lokasi file"), command=self._reveal_selected)
+        self.context_menu.add_command(label=T("Salin path"), command=self._copy_paths)
         self.context_menu.add_separator()
-        self.context_menu.add_command(label="🔒 Kecualikan file yang dipilih", command=self.exclude_selected)
-        self.context_menu.add_command(label="🔒 Kecualikan seluruh folder ini",
+        self.context_menu.add_command(label=T("🔒 Kecualikan file yang dipilih"), command=self.exclude_selected)
+        self.context_menu.add_command(label=T("🔒 Kecualikan seluruh folder ini"),
                                       command=lambda: self.exclude_selected(folder=True))
-        self.context_menu.add_command(label="Batalkan pengecualian", command=self.unexclude_selected)
+        self.context_menu.add_command(label=T("Batalkan pengecualian"), command=self.unexclude_selected)
 
         # Empty state, laid over the table.
         self.empty = ttk.Frame(table, style="Card.TFrame", padding=20)
@@ -1862,10 +2088,10 @@ class App(tk.Tk):
         self.empty_text.pack()
         self.empty_actions = ttk.Frame(self.empty, style="Card.TFrame")
         self.empty_actions.pack(pady=(14, 0))
-        self.empty_folder = ttk.Button(self.empty_actions, text="📁 Pilih folder PC",
+        self.empty_folder = ttk.Button(self.empty_actions, text=T("📁 Pilih folder PC"),
                                        style="Primary.TButton", command=self.choose_folder)
-        self.empty_phone = ttk.Button(self.empty_actions, text="📱 Hubungkan HP", command=self.choose_device)
-        self.empty_reset = ttk.Button(self.empty_actions, text="Reset filter", command=self.reset_filters)
+        self.empty_phone = ttk.Button(self.empty_actions, text=T("📱 Hubungkan HP"), command=self.choose_device)
+        self.empty_reset = ttk.Button(self.empty_actions, text=T("Reset filter"), command=self.reset_filters)
 
         self._lockable = [self.folder_btn, self.phone_btn, self.scan_btn, self.source_entry,
                           self.preview_btn, self.dup_btn, self.opt_btn, *self.mode_buttons]
@@ -1874,26 +2100,43 @@ class App(tk.Tk):
 
     def _options_menu(self, owner):
         menu = tk.Menu(owner, tearoff=False)
-        menu.add_command(label="Jika nama file sudah ada:", state="disabled")
+        menu.add_command(label=T("Jika nama file sudah ada:"), state="disabled")
         for text, value in (("Buat nama baru", "unique"), ("Lewati", "skip"), ("Timpa", "overwrite")):
-            menu.add_radiobutton(label="    " + text, variable=self.conflict_var, value=value)
+            menu.add_radiobutton(label="    " + T(text), variable=self.conflict_var, value=value)
         menu.add_separator()
-        menu.add_checkbutton(label="Sertakan subfolder", variable=self.include_subfolders,
+        menu.add_checkbutton(label=T("Sertakan subfolder"), variable=self.include_subfolders,
                              command=self._rescan_if_ready)
-        menu.add_checkbutton(label="Lewati folder sistem & tersembunyi (Android/data, .thumbnails, …)",
+        menu.add_checkbutton(label=T("Lewati folder sistem & tersembunyi (Android/data, .thumbnails, …)"),
                              variable=self.skip_junk, command=self._rescan_if_ready)
-        menu.add_checkbutton(label="Subfolder Android (WhatsApp, Kamera, Screenshot…)",
+        menu.add_checkbutton(label=T("Subfolder Android (WhatsApp, Kamera, Screenshot…)"),
                              variable=self.android_var, command=lambda: self._rerender(refit=True))
         menu.add_separator()
-        menu.add_command(label="Kecualikan folder…", command=self.exclude_folders)
+        menu.add_command(label=T("Kecualikan folder…"), command=self.exclude_folders)
         menu.add_separator()
-        menu.add_checkbutton(label="🔒 Lindungi data aplikasi (backup WhatsApp, database, .nomedia)",
+        menu.add_checkbutton(label=T("🔒 Lindungi data aplikasi (backup WhatsApp, database, .nomedia)"),
                              variable=self.protect_var,
                              command=lambda: (self._rerender(refit=True), self.status.set(self._summary())))
-        menu.add_command(label="Hapus semua pengecualian manual…", command=self.clear_exclusions)
+        menu.add_command(label=T("Hapus semua pengecualian manual…"), command=self.clear_exclusions)
         menu.add_separator()
-        menu.add_command(label="Buka log", command=self.open_log)
+        menu.add_command(label=T("Buka log"), command=self.open_log)
+        menu.add_separator()
+        # Always bilingual, so someone who can't read the current language still finds it.
+        languages = tk.Menu(menu, tearoff=False)
+        for lang in LANGS:
+            languages.add_radiobutton(label=LANG_NAMES[lang], variable=self.lang_var, value=lang,
+                                      command=self._set_language)
+        menu.add_cascade(label="🌐 Language / Bahasa", menu=languages)
         return menu
+
+    def _set_language(self):
+        try:
+            save_settings({**load_settings(), "lang": self.lang_var.get()})
+        except OSError as exc:
+            messagebox.showerror("Language / Bahasa", str(exc), parent=self)
+            return
+        restart = {"English": "The language changes the next time the app starts.",
+                   "Indonesia": "Bahasa akan berganti saat aplikasi dibuka lagi."}
+        messagebox.showinfo("Language / Bahasa", restart[self.lang_var.get()], parent=self)
 
     # ── small UI helpers ──────────────────────────────────────────────────
     def _on_double_click(self, event):
@@ -1917,7 +2160,7 @@ class App(tk.Tk):
         since resolving a phone path goes over USB."""
         if isinstance(path, PurePosixPath):  # a file on the phone
             if self.busy:
-                self.status.set("Tunggu proses selesai dulu — koneksi HP sedang dipakai.")
+                self.status.set(T("Tunggu proses selesai dulu — koneksi HP sedang dipakai."))
                 return
             bridge = self.bridge_instance
 
@@ -1935,8 +2178,8 @@ class App(tk.Tk):
                 user32.SetForegroundWindow(hwnd)
         else:
             work = lambda: reveal_in_explorer(str(path))
-        self.status.set(f"Membuka lokasi {path.name}…")
-        self.run_bg(work, lambda _: self.status.set(f"Lokasi {path.name} dibuka di Explorer."))
+        self.status.set(T("Membuka lokasi {}…", path.name))
+        self.run_bg(work, lambda _: self.status.set(T("Lokasi {} dibuka di Explorer.", path.name)))
 
     def _reveal_selected(self):
         selected = self.tree.selection()
@@ -1963,7 +2206,7 @@ class App(tk.Tk):
     def _destination_text(self, e: Entry, android: bool) -> str:
         """The "Tujuan" cell: where it goes, or 🔒 and why it stays."""
         blocked = self._blocked(e)
-        return f"🔒 {blocked}" if blocked else entry_label(e, android).replace("/", " › ")
+        return f"🔒 {T(blocked)}" if blocked else entry_label(e, android).replace("/", " › ")
 
     def _actionable(self, entries) -> tuple[list[Entry], int]:
         ok = [e for e in entries if not self._blocked(e)]
@@ -1975,24 +2218,25 @@ class App(tk.Tk):
             return
         if folder:
             self.exclusions.add_folder(entries[0].path.parent)
-            self.status.set(f"Folder {entries[0].path.parent.name} dikecualikan (tersimpan).")
+            self.status.set(T("Folder {} dikecualikan (tersimpan).", entries[0].path.parent.name))
         else:
             self.exclusions.add_files(e.path for e in entries)
-            self.status.set(f"{len(entries):,} file dikecualikan (tersimpan).")
+            self.status.set(T("{} file dikecualikan (tersimpan).", f"{len(entries):,}"))
         self._rerender(refit=True)
 
     def unexclude_selected(self):
         entries = self._selected_entries()
         self.exclusions.remove(e.path for e in entries)
-        self.status.set(f"Pengecualian dihapus untuk {len(entries):,} file.")
+        self.status.set(T("Pengecualian dihapus untuk {} file.", f"{len(entries):,}"))
         self._rerender(refit=True)
 
     def clear_exclusions(self):
         if not len(self.exclusions):
-            messagebox.showinfo("Pengecualian", "Belum ada file atau folder yang dikecualikan.", parent=self)
-        elif messagebox.askyesno("Hapus semua pengecualian",
-                                 f"Hapus {len(self.exclusions):,} pengecualian? File-file itu akan ikut "
-                                 "diproses lagi (data aplikasi yang dilindungi tetap aman).", parent=self):
+            messagebox.showinfo(T("Pengecualian"), T("Belum ada file atau folder yang dikecualikan."), parent=self)
+        elif messagebox.askyesno(T("Hapus semua pengecualian"),
+                                 T("Hapus {} pengecualian? File-file itu akan ikut diproses lagi "
+                                   "(data aplikasi yang dilindungi tetap aman).", f"{len(self.exclusions):,}"),
+                                 parent=self):
             self.exclusions.clear()
             self._rerender(refit=True)
             self.status.set(self._summary())
@@ -2027,7 +2271,7 @@ class App(tk.Tk):
 
     def _update_chips(self):
         for key, chip in self.chip_buttons.items():
-            name = CATEGORY_LABELS.get(key, "Semua")
+            name = T(CATEGORY_LABELS.get(key, "Semua"))
             count = self.category_counts[key] if key else len(self.all_files)
             chip.configure(text=f"{name}  {count:,}" if self.scanned and not self._compact_chips else name)
             chip.state(["disabled"] if self.scanned and key and not count else ["!disabled"])
@@ -2037,7 +2281,7 @@ class App(tk.Tk):
             return
         selected = bool(self.tree.selection())
         count = len(self._actionable(self._target_entries())[0])  # protected/excluded never count
-        text = f"⚡ Pisahkan {count:,} dipilih" if selected else f"⚡ Pisahkan semua ({count:,})"
+        text = T("⚡ Pisahkan {} dipilih" if selected else "⚡ Pisahkan semua ({})", f"{count:,}")
         self.go_btn.configure(text=text, style="Primary.TButton", command=self.organize)
         self.go_btn.state(["!disabled"] if count else ["disabled"])
 
@@ -2049,32 +2293,32 @@ class App(tk.Tk):
             b.pack_forget()
         if self.all_files:
             self.empty_icon.configure(text="🔍")
-            self.empty_title.configure(text="Tidak ada file yang cocok")
-            self.empty_text.configure(text="Coba kategori lain, kata kunci lain, atau reset filter.")
+            self.empty_title.configure(text=T("Tidak ada file yang cocok"))
+            self.empty_text.configure(text=T("Coba kategori lain, kata kunci lain, atau reset filter."))
             self.empty_reset.pack()
         else:
             self.empty_icon.configure(text="📂")
             if self.scanned:
-                self.empty_title.configure(text="Tidak ada file di sini")
-                self.empty_text.configure(text="Folder ini kosong atau semua file sudah dipisahkan.\n"
-                                               "Aktifkan “Sertakan subfolder” di ⚙ Opsi untuk ikut membaca subfolder.")
+                self.empty_title.configure(text=T("Tidak ada file di sini"))
+                self.empty_text.configure(text=T("Folder ini kosong atau semua file sudah dipisahkan.\n"
+                                                 "Aktifkan “Sertakan subfolder” di ⚙ Opsi untuk ikut membaca subfolder."))
             else:
-                self.empty_title.configure(text="Mulai dengan memilih sumber file")
-                self.empty_text.configure(text="Pilih folder di PC, atau hubungkan HP Android lewat kabel USB/OTG.\n"
-                                               "Ctrl+O pilih folder  ·  F5 scan ulang  ·  Ctrl+F cari")
+                self.empty_title.configure(text=T("Mulai dengan memilih sumber file"))
+                self.empty_text.configure(text=T("Pilih folder di PC, atau hubungkan HP Android lewat kabel USB/OTG.\n"
+                                                 "Ctrl+O pilih folder  ·  F5 scan ulang  ·  Ctrl+F cari"))
             self.empty_folder.pack(side="left")
             self.empty_phone.pack(side="left", padx=(8, 0))
         self.empty.place(relx=0.5, rely=0.45, anchor="center")
         self.empty.lift()
 
     def _summary(self) -> str:
-        text = f"{len(self.all_files):,} file · {human_size(sum(e.size for e in self.all_files))}"
+        text = T("{} file · {}", f"{len(self.all_files):,}", human_size(sum(e.size for e in self.all_files)))
         if len(self.filtered_files) != len(self.all_files):
-            text += (f"  —  tampil {len(self.filtered_files):,} "
-                     f"({human_size(sum(e.size for e in self.filtered_files))})")
+            text += "  —  " + T("tampil {} ({})", f"{len(self.filtered_files):,}",
+                                human_size(sum(e.size for e in self.filtered_files)))
         blocked = sum(1 for e in self.all_files if self._blocked(e))
         if blocked:
-            text += f"  ·  🔒 {blocked:,} dilindungi/dikecualikan, tidak akan diproses"
+            text += "  ·  " + T("🔒 {} dilindungi/dikecualikan, tidak akan diproses", f"{blocked:,}")
         return text
 
     # ── background work ───────────────────────────────────────────────────
@@ -2140,9 +2384,9 @@ class App(tk.Tk):
                     if was_busy:
                         self._set_busy(False)
                     if self.stop_event.is_set():  # the user stopped it; the error is just the fallout
-                        self.status.set("Dihentikan.")
+                        self.status.set(T("Dihentikan."))
                     else:
-                        self.status.set("Terjadi error.")
+                        self.status.set(T("Terjadi error."))
                         messagebox.showerror("Error", message, parent=self)
         except queue.Empty:
             pass
@@ -2158,9 +2402,9 @@ class App(tk.Tk):
         # listing (or a second press) cuts the bridge instead of waiting politely.
         if self.device_root and self.bridge and (second_press or self._listing_phone):
             self.bridge.close()
-            self.status.set("Dihentikan paksa.")
+            self.status.set(T("Dihentikan paksa."))
         else:
-            self.status.set("Menghentikan setelah file ini…  (klik Stop lagi untuk paksa)")
+            self.status.set(T("Menghentikan setelah file ini…  (klik Stop lagi untuk paksa)"))
 
     def _on_close(self):
         self.stop_event.set()
@@ -2181,7 +2425,7 @@ class App(tk.Tk):
         return Path(self.dest_var.get()) if self.device_root else self.source()
 
     def choose_folder(self):
-        folder = filedialog.askdirectory(title="Pilih folder sumber", parent=self)
+        folder = filedialog.askdirectory(title=T("Pilih folder sumber"), parent=self)
         if folder:
             self.device_root = None
             self.source_entry.state(["!readonly"])
@@ -2200,11 +2444,11 @@ class App(tk.Tk):
         self.source_entry.state(["readonly"])
         self.include_subfolders.set(True)  # phone media sits in subfolders (DCIM/Camera, …)
         self.dest_row.pack(fill="x", pady=(8, 0), after=self.head)
-        self.dest_lbl.configure(text=self.dest_var.get() or "belum dipilih — ditanyakan saat memisahkan")
+        self.dest_lbl.configure(text=self.dest_var.get() or T("belum dipilih — ditanyakan saat memisahkan"))
         self.scan()
 
     def choose_dest(self):
-        folder = filedialog.askdirectory(title="Pilih folder di PC untuk menyimpan file dari HP", parent=self)
+        folder = filedialog.askdirectory(title=T("Pilih folder di PC untuk menyimpan file dari HP"), parent=self)
         if folder:
             self.dest_var.set(folder)
             self.dest_lbl.configure(text=folder)
@@ -2220,12 +2464,12 @@ class App(tk.Tk):
             return self.source()
         raw = self.source_var.get().strip().strip('"')
         if not raw:
-            messagebox.showinfo("Pilih folder sumber",
-                                'Klik "Folder PC" atau "HP / OTG" untuk memilih sumber file.', parent=self)
+            messagebox.showinfo(T("Pilih folder sumber"),
+                                T('Klik "Folder PC" atau "HP / OTG" untuk memilih sumber file.'), parent=self)
             return None
         p = Path(raw)
         if not p.is_dir():
-            messagebox.showerror("Folder tidak valid", f"Folder tidak ditemukan:\n{p}", parent=self)
+            messagebox.showerror(T("Folder tidak valid"), T("Folder tidak ditemukan:\n{}", p), parent=self)
             return None
         return p
 
@@ -2248,7 +2492,7 @@ class App(tk.Tk):
             def progress(n, line):
                 # Show where the scan is, so a slow folder is easy to spot (and exclude).
                 folder = line.rsplit("\t", 1)[-1].rpartition("/")[0] or "  ›  ".join(device)
-                report(n, None, f"Membaca HP… {n:,} file  ·  {folder}")
+                report(n, None, T("Membaca HP… {} file  ·  {}", f"{n:,}", folder))
 
             def work():
                 try:
@@ -2262,10 +2506,10 @@ class App(tk.Tk):
 
             def work():
                 return discover_files(source, recursive, script, excluded,
-                                      lambda n, _: report(n, None, f"Membaca folder… {n:,} file"),
+                                      lambda n, _: report(n, None, T("Membaca folder… {} file", f"{n:,}")),
                                       skip_junk)
         self.run_bg(work, self._scan_done, cancellable=bool(device),
-                    status="Membaca HP… (biarkan layar HP tetap menyala)" if device else "Membaca folder…")
+                    status=T("Membaca HP… (biarkan layar HP tetap menyala)") if device else T("Membaca folder…"))
 
     def _scan_done(self, found):
         self.scanned = True
@@ -2287,15 +2531,15 @@ class App(tk.Tk):
             try:
                 value = float(text.replace(",", "."))
             except ValueError:
-                raise ValueError(f"{label} harus berupa angka.")
+                raise ValueError(T("{} harus berupa angka.", label))
             if value < 0:
-                raise ValueError(f"{label} tidak boleh negatif.")
+                raise ValueError(T("{} tidak boleh negatif.", label))
             return value
 
         min_mb = number(self.min_var, "Min MB")
         max_mb = number(self.max_var, "Max MB")
         if min_mb is not None and max_mb is not None and min_mb > max_mb:
-            raise ValueError("Min MB tidak boleh lebih besar dari Max MB.")
+            raise ValueError(T("Min MB tidak boleh lebih besar dari Max MB."))
 
         def date_value(var, label):
             text = var.get().strip()
@@ -2304,12 +2548,12 @@ class App(tk.Tk):
             try:
                 return datetime.strptime(text, "%Y-%m-%d").date()
             except ValueError:
-                raise ValueError(f"{label} harus YYYY-MM-DD.")
+                raise ValueError(T("{} harus YYYY-MM-DD.", label))
 
-        date_from = date_value(self.from_var, "Tanggal Dari")
-        date_to = date_value(self.to_var, "Tanggal Sampai")
+        date_from = date_value(self.from_var, T("Tanggal Dari"))
+        date_to = date_value(self.to_var, T("Tanggal Sampai"))
         if date_from and date_to and date_from > date_to:
-            raise ValueError("Tanggal Dari tidak boleh lebih besar dari Tanggal Sampai.")
+            raise ValueError(T("Tanggal Dari tidak boleh lebih besar dari Tanggal Sampai."))
 
         return min_mb, max_mb, date_from, date_to, parse_extensions(self.ext_var.get())
 
@@ -2360,7 +2604,7 @@ class App(tk.Tk):
         first columns; otherwise only the path column follows the data, keeping any
         width the user dragged by hand."""
         px, android, source = self.px, self.android_var.get(), self.source()
-        heading = lambda c: self.head_font.measure(self.HEADINGS[c] + " ▼") + 28
+        heading = lambda c: self.head_font.measure(T(self.HEADINGS[c]) + " ▼") + 28
         if refit:
             for c, texts, cap in (
                     ("name", (e.path.name for e in files), px(560)),
@@ -2389,7 +2633,7 @@ class App(tk.Tk):
         col, reverse = self._sort
         for c in self.COLUMNS:
             arrow = (" ▼" if reverse else " ▲") if c == col else ""
-            self.tree.heading(c, text=self.HEADINGS[c] + arrow)
+            self.tree.heading(c, text=T(self.HEADINGS[c]) + arrow)
 
     def _refresh_table(self, refit=False):
         self.tree.delete(*self.tree.get_children())
@@ -2409,8 +2653,8 @@ class App(tk.Tk):
     # ── actions ───────────────────────────────────────────────────────────
     def exclude_folders(self):
         if self.device_root:
-            messagebox.showinfo("Kecualikan folder",
-                                "Untuk HP, pilih langsung folder yang ingin dibaca lewat 📱 HP / OTG.",
+            messagebox.showinfo(T("Kecualikan folder"),
+                                T("Untuk HP, pilih langsung folder yang ingin dibaca lewat 📱 HP / OTG."),
                                 parent=self)
             return
         source = self.validate_source()
@@ -2434,8 +2678,8 @@ class App(tk.Tk):
         entries, blocked = self._actionable(self._target_entries())
         if not entries:
             if blocked:
-                messagebox.showinfo("Tidak ada yang diproses",
-                                    f"Semua {blocked:,} file ini dilindungi atau dikecualikan.", parent=self)
+                messagebox.showinfo(T("Tidak ada yang diproses"),
+                                    T("Semua {} file ini dilindungi atau dikecualikan.", f"{blocked:,}"), parent=self)
             return None, blocked
         return entries, blocked
 
@@ -2450,28 +2694,33 @@ class App(tk.Tk):
         source, conflict, android = self.source(), self.conflict_var.get(), self.android_var.get()
         self.run_bg(lambda: preview_operations(paths, source, conflict, android, dest),
                     lambda records: PreviewWindow(self, records, source, dest),
-                    status="Menyiapkan preview…")
+                    status=T("Menyiapkan preview…"))
 
     def _confirm(self, files, dest: Path, blocked: int = 0):
-        mode_text = "MEMINDAHKAN" if self.mode_var.get() == "MOVE" else "MENYALIN"
-        conflict_text = {
+        move = self.mode_var.get() == "MOVE"
+        conflict_text = T({
             "unique": "buat nama baru",
             "skip": "lewati",
             "overwrite": "timpa",
-        }[self.conflict_var.get()]
-        android_text = "aktif" if self.android_var.get() else "nonaktif"
-        origin = "dari HP " if self.device_root else ""
-        if self.device_root and self.mode_var.get() == "MOVE":
-            mode_text += " (file di HP akan dihapus setelah tersalin)"
+        }[self.conflict_var.get()])
+        android_text = T("aktif") if self.android_var.get() else T("nonaktif")
+        if self.device_root:
+            head = T("MEMINDAHKAN {} file dari HP ke folder kategori di:\n{}" if move else
+                     "MENYALIN {} file dari HP ke folder kategori di:\n{}", f"{len(files):,}", dest)
+            if move:
+                head += "\n" + T("(file di HP akan dihapus setelah tersalin)")
+        else:
+            head = T("MEMINDAHKAN {} file ke folder kategori di:\n{}" if move else
+                     "MENYALIN {} file ke folder kategori di:\n{}", f"{len(files):,}", dest)
 
         msg = (
-            f"{mode_text} {len(files):,} file {origin}ke folder kategori di:\n{dest}\n\n"
-            f"Jika nama sudah ada: {conflict_text}.\n"
-            f"Subfolder Android: {android_text}.\n"
-            + (f"🔒 {blocked:,} file dilindungi/dikecualikan tidak akan disentuh.\n" if blocked else "")
-            + "\nKlik Preview untuk memeriksa tujuan setiap file lebih dulu."
+            head + "\n\n"
+            + T("Jika nama sudah ada: {}.", conflict_text) + "\n"
+            + T("Subfolder Android: {}.", android_text) + "\n"
+            + (T("🔒 {} file dilindungi/dikecualikan tidak akan disentuh.", f"{blocked:,}") + "\n" if blocked else "")
+            + "\n" + T("Klik Preview untuk memeriksa tujuan setiap file lebih dulu.")
         )
-        return messagebox.askyesno("Konfirmasi", msg, parent=self)
+        return messagebox.askyesno(T("Konfirmasi"), msg, parent=self)
 
     def _whatsapp_media_check(self, entries) -> bool:
         """Before a MOVE of WhatsApp media: offer to copy instead. False = cancelled."""
@@ -2482,12 +2731,12 @@ class App(tk.Tk):
         if not count:
             return True
         answer = messagebox.askyesnocancel(
-            "Media WhatsApp",
-            f"{count:,} file adalah media WhatsApp. Kalau dipindahkan, foto/video/dokumen itu "
-            "akan tampil buram atau hilang di dalam chat WhatsApp.\n\n"
-            "Ya — ganti ke SALIN (disarankan, HP tidak berubah)\n"
-            "Tidak — tetap PINDAHKAN\n"
-            "Batal — jangan lakukan apa pun", icon="warning", parent=self)
+            T("Media WhatsApp"),
+            T("{} file adalah media WhatsApp. Kalau dipindahkan, foto/video/dokumen itu "
+              "akan tampil buram atau hilang di dalam chat WhatsApp.\n\n"
+              "Ya — ganti ke SALIN (disarankan, HP tidak berubah)\n"
+              "Tidak — tetap PINDAHKAN\n"
+              "Batal — jangan lakukan apa pun", f"{count:,}"), icon="warning", parent=self)
         if answer is None:
             return False
         if answer:
@@ -2570,10 +2819,10 @@ class App(tk.Tk):
                     # The Shell let go of a short file: a cancelled copy (seen: 0 B) unless the
                     # phone no longer has the source, i.e. it did move it and misreported the size.
                     if move and not still_on_phone(src):
-                        local, note = got, f"ukuran dilaporkan HP {size:,} B, diterima {received:,} B"
+                        local, note = got, T("ukuran dilaporkan HP {} B, diterima {} B", f"{size:,}", f"{received:,}")
                         break
                     got.unlink(missing_ok=True)
-                    error = RuntimeError(f"tersalin tidak lengkap ({received:,} dari {size:,} B)")
+                    error = RuntimeError(T("tersalin tidak lengkap ({} dari {} B)", f"{received:,}", f"{size:,}"))
                 except Exception as exc:
                     error = exc
                 local = finished_late(tried, size)
@@ -2587,14 +2836,14 @@ class App(tk.Tk):
                     if phone_answers():
                         failures_in_row = 0
                     else:
-                        self._abort_reason = (
-                            f"HP tidak merespons lagi setelah {self.ABORT_AFTER} file berturut-turut "
+                        self._abort_reason = T(
+                            "HP tidak merespons lagi setelah {} file berturut-turut "
                             "gagal, jadi proses dihentikan otomatis.\n\n"
                             "Cabut-colok kabel, buka kunci layar HP, pilih “Transfer file”, lalu "
                             "scan ulang dan jalankan lagi. File yang sudah berhasil tidak akan "
-                            "diproses ulang; file yang gagal masih ada di HP.")
+                            "diproses ulang; file yang gagal masih ada di HP.", self.ABORT_AFTER)
                         self.stop_event.set()
-                raise error or RuntimeError("Dihentikan.")
+                raise error or RuntimeError(T("Dihentikan."))
             failures_in_row = 0
             return (local, note) if note else local
 
@@ -2647,7 +2896,7 @@ class App(tk.Tk):
                                  "action": "MOVE" if move else "COPY", "status": "OK",
                                  "category": record["category"], "source": str(src),
                                  "destination": str(target),
-                                 "error": "dipulihkan: tiba setelah percobaannya dianggap gagal"})
+                                 "error": T("dipulihkan: tiba setelah percobaannya dianggap gagal")})
             return rows
 
         fetch.recover = recover
@@ -2657,8 +2906,8 @@ class App(tk.Tk):
         report = self._reporter()
 
         def progress(current, total, ok, skipped, failed):
-            report(current, total, f"{current:,}/{total:,}  ·  berhasil {ok:,}  ·  "
-                                   f"dilewati {skipped:,}  ·  gagal {failed:,}")
+            report(current, total, T("{}/{}  ·  berhasil {}  ·  dilewati {}  ·  gagal {}",
+                                     f"{current:,}", f"{total:,}", f"{ok:,}", f"{skipped:,}", f"{failed:,}"))
 
         # One log file per destination folder, never inside a category folder.
         log_path = log_dir / LOG_NAME
@@ -2671,7 +2920,7 @@ class App(tk.Tk):
                 result = list(execute_operations(records, mode, conflict, self.stop_event, progress, fetch,
                                                  on_record=log.write))
                 if fetch and hasattr(fetch, "recover"):
-                    report(0, None, "Menunggu & memeriksa transfer yang tiba terlambat…")
+                    report(0, None, T("Menunggu & memeriksa transfer yang tiba terlambat…"))
                     recovered = fetch.recover(result[4])
                     for row in recovered:
                         log.write(row)
@@ -2685,41 +2934,42 @@ class App(tk.Tk):
             stranded = sum(1 for p in (log_dir / STAGING_DIR).rglob("*") if p.is_file()) if fetch else 0
             return (*result, log_path, stranded)
 
-        self.run_bg(work, self._operation_done, status="Memproses…", cancellable=True, determinate=True)
+        self.run_bg(work, self._operation_done, status=T("Memproses…"), cancellable=True, determinate=True)
 
     def _operation_done(self, result):
         success, skipped, failed, cancelled, logs, log_path, stranded = result
         self.last_log_path = log_path
-        counts = f"Berhasil {success:,}  ·  dilewati {skipped:,}  ·  gagal {failed:,}"
-        self.status.set(("Dihentikan — " if cancelled else "Selesai — ") + counts)
-        detail = f"\n\nBerhasil: {success:,}\nDilewati: {skipped:,}\nGagal: {failed:,}\n\nLog: {log_path}"
+        counts = T("Berhasil {}  ·  dilewati {}  ·  gagal {}", f"{success:,}", f"{skipped:,}", f"{failed:,}")
+        self.status.set((T("Dihentikan — ") if cancelled else T("Selesai — ")) + counts)
+        detail = "\n\n" + T("Berhasil: {}\nDilewati: {}\nGagal: {}\n\nLog: {}",
+                            f"{success:,}", f"{skipped:,}", f"{failed:,}", log_path)
         if failed:
             recovered = {log["source"] for log in logs if log["status"] == "OK"}
             errors = [log for log in logs if log["status"] == "ERROR" and log["source"] not in recovered]
-            detail += "\n\nYang gagal:\n" + "\n".join(
+            detail += "\n\n" + T("Yang gagal:") + "\n" + "\n".join(
                 f"• {Path(log['source'].replace('/', os.sep)).name} — {log['error'][:140]}" for log in errors[:6])
             if len(errors) > 6:
-                detail += f"\n… dan {len(errors) - 6:,} lainnya (lihat log)"
+                detail += "\n" + T("… dan {} lainnya (lihat log)", f"{len(errors) - 6:,}")
         if failed and self.device_root:
-            detail += "\n\nFile yang gagal masih ada di HP — scan ulang lalu jalankan lagi untuk mencobanya."
+            detail += "\n\n" + T("File yang gagal masih ada di HP — scan ulang lalu jalankan lagi untuk mencobanya.")
         if stranded:
-            detail += (f"\n\n⚠ {stranded:,} file tertahan di folder staging (sudah tersalin, belum "
-                       f"dipindah ke kategori):\n{log_path.parent / STAGING_DIR}")
+            detail += "\n\n" + T("⚠ {} file tertahan di folder staging (sudah tersalin, belum "
+                                 "dipindah ke kategori):\n{}", f"{stranded:,}", log_path.parent / STAGING_DIR)
         if self._abort_reason:
-            messagebox.showwarning("Proses dihentikan otomatis", self._abort_reason + detail, parent=self)
+            messagebox.showwarning(T("Proses dihentikan otomatis"), self._abort_reason + detail, parent=self)
         elif cancelled:
-            messagebox.showwarning("Operasi dihentikan", "Operasi dihentikan dengan aman." + detail, parent=self)
+            messagebox.showwarning(T("Operasi dihentikan"), T("Operasi dihentikan dengan aman.") + detail, parent=self)
         elif failed or stranded:
-            messagebox.showwarning("Selesai dengan masalah", "Operasi selesai, tapi ada yang gagal." + detail,
+            messagebox.showwarning(T("Selesai dengan masalah"), T("Operasi selesai, tapi ada yang gagal.") + detail,
                                    parent=self)
         else:
-            messagebox.showinfo("Selesai", "Operasi selesai." + detail, parent=self)
+            messagebox.showinfo(T("Selesai"), T("Operasi selesai.") + detail, parent=self)
         if self.device_root:
             # Re-listing a phone takes minutes; we already know what changed: only
             # files that were successfully MOVEd are gone from it.
             moved = {log["source"] for log in logs if log["status"] == "OK" and log["action"] == "MOVE"}
             self._scan_done([e for e in self.all_files if str(e.path) not in moved])
-            self.status.set(("Dihentikan — " if cancelled else "Selesai — ") + counts)
+            self.status.set((T("Dihentikan — ") if cancelled else T("Selesai — ")) + counts)
         else:
             # Refresh filesystem state. If source becomes empty, the table shows the empty state.
             self.scan()
@@ -2729,37 +2979,39 @@ class App(tk.Tk):
             return
         if self.device_root:
             messagebox.showinfo(
-                "Cari duplikat",
-                "Mencari duplikat perlu membaca isi setiap file — terlalu lambat lewat kabel MTP.\n\n"
-                "Salin file dari HP ke PC dulu, lalu buka folder tujuan lewat 📁 Folder PC "
-                "dan cari duplikat di sana.", parent=self)
+                T("Cari duplikat"),
+                T("Mencari duplikat perlu membaca isi setiap file — terlalu lambat lewat kabel MTP.\n\n"
+                  "Salin file dari HP ke PC dulu, lalu buka folder tujuan lewat 📁 Folder PC "
+                  "dan cari duplikat di sana."), parent=self)
             return
         entries, _ = self._actionable(self.filtered_files)  # never shuffle protected files into Duplicates/
         if not entries:
             return
         report = self._reporter()
         self.run_bg(lambda: find_duplicates(entries, self.stop_event,
-                                            lambda c, t, phase: report(c, t, f"Mencari duplikat — {phase} {c:,}/{t:,}")),
-                    self._dup_done, status="Mencari duplikat…", cancellable=True, determinate=True)
+                                            lambda c, t, phase: report(c, t, T("Mencari duplikat — {} {}/{}",
+                                                                               T(phase), f"{c:,}", f"{t:,}"))),
+                    self._dup_done, status=T("Mencari duplikat…"), cancellable=True, determinate=True)
 
     def _dup_done(self, groups):
         if self.stop_event.is_set():
-            self.status.set("Pencarian duplikat dihentikan.")
+            self.status.set(T("Pencarian duplikat dihentikan."))
         elif not groups:
-            self.status.set("Tidak ada duplikat — " + self._summary())
-            messagebox.showinfo("Tidak ada duplikat", "Semua file yang tampil di tabel unik.", parent=self)
+            self.status.set(T("Tidak ada duplikat — ") + self._summary())
+            messagebox.showinfo(T("Tidak ada duplikat"), T("Semua file yang tampil di tabel unik."), parent=self)
         else:
             count = sum(len(g) - 1 for g in groups)
-            self.status.set(f"{count:,} duplikat dalam {len(groups):,} grup.")
+            self.status.set(T("{} duplikat dalam {} grup.", f"{count:,}", f"{len(groups):,}"))
             DuplicateWindow(self, groups, self.source(), self._move_duplicates)
 
     def _move_duplicates(self, groups):
         source = self.source()
         count = sum(len(g) - 1 for g in groups)
         if not messagebox.askyesno(
-                "Konfirmasi",
-                f"Memindahkan {count:,} file duplikat ke:\n{source / DUPLICATES_DIR}\n\n"
-                "File yang disimpan tetap di tempatnya. Tidak ada file yang dihapus.", parent=self):
+                T("Konfirmasi"),
+                T("Memindahkan {} file duplikat ke:\n{}\n\n"
+                  "File yang disimpan tetap di tempatnya. Tidak ada file yang dihapus.",
+                  f"{count:,}", source / DUPLICATES_DIR), parent=self):
             return
         self._start_operation(lambda: duplicate_records(groups, source), "MOVE", "unique", source)
 
@@ -2768,7 +3020,7 @@ class App(tk.Tk):
             if candidate and candidate.exists():
                 os.startfile(str(candidate))
                 return
-        messagebox.showinfo("Log belum ada", "Log dibuat setelah file dipindahkan atau disalin.", parent=self)
+        messagebox.showinfo(T("Log belum ada"), T("Log dibuat setelah file dipindahkan atau disalin."), parent=self)
 
 
 def self_test():
@@ -3056,6 +3308,41 @@ def self_test():
         (root / "cfg" / "broken.json").write_text("{not json", encoding="utf-8")
         assert len(Exclusions(root / "cfg" / "broken.json")) == 0  # corrupt file → empty, no crash
 
+        # Every text passed to T() (and every key used indirectly) has an English entry with
+        # the same {} slots; Indonesian returns the key itself.
+        import ast
+
+        def literals(node):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str):
+                return [node.value]
+            if isinstance(node, ast.IfExp):
+                return literals(node.body) + literals(node.orelse)
+            if isinstance(node, ast.Dict):
+                return [k for v in node.values for k in literals(v)]
+            return []
+
+        source_tree = ast.parse(Path(__file__).read_text(encoding="utf-8"))
+        keys = {k for n in ast.walk(source_tree)
+                if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "T" and n.args
+                for k in literals(n.args[0] if not isinstance(n.args[0], ast.Subscript) else n.args[0].value)}
+        keys |= (set(CATEGORY_LABELS.values()) | {"Semua", "dikecualikan", "cek awal file", "hash penuh"}
+                 | {r for r, _ in PROTECTED_RULES} | (set(App.HEADINGS.values()) - {"Folder"})
+                 | {"Ekstensi", "Dari", "Sampai", "Pindahkan", "Salin", "Buat nama baru", "Lewati", "Timpa"}
+                 | set(BRIDGE_MESSAGES))
+        missing = sorted(k for k in keys if k not in EN)
+        assert not missing, missing
+        slots = [k for k in keys if k.count("{}") != EN[k].count("{}")]
+        assert not slots, slots
+        assert LANG == "English" and T("Batal") == "Cancel" and T("Grup {} — {} file identik", 2, 3) == "Group 2 — 3 identical files"
+        assert bridge_message("Tidak ditemukan: DCIM / Camera") == "Not found: DCIM / Camera"
+        assert bridge_message("File tidak mulai tersalin dalam 60 detik: a.jpg") == "File did not start copying within 60 s: a.jpg"
+        assert bridge_message("Access is denied.") == "Access is denied."  # Windows' own text untouched
+        globals()["LANG"] = "Indonesia"
+        try:
+            assert T("Batal") == "Batal" and bridge_message("Penyalinan macet: x") == "Penyalinan macet: x"
+        finally:
+            globals()["LANG"] = "English"
+
         # Throttle keeps the final call.
         calls = []
         t = throttled(lambda cur, total: calls.append(cur), interval=60)
@@ -3137,6 +3424,7 @@ def self_test():
         if sys.platform == "win32":
             print("Windows Shell / MTP bridge (copy + move, unicode): OK")
         print("Log-ready records: OK")
+        print("English/Indonesian texts: OK")
 
 
 if __name__ == "__main__":
