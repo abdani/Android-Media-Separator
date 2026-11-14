@@ -133,6 +133,17 @@ To organize only some files, select them in the table (<kbd>Ctrl</kbd>/<kbd>Shif
 | Linux | Not yet. The sorting engine passes its self-test on Ubuntu 24.04, but phone access (MTP), *show in folder* and *open log* use Windows-only APIs. |
 | macOS | Untested |
 
+## Built with
+
+| Component | Purpose | License |
+| --- | --- | --- |
+| [Python](https://www.python.org) + Tkinter ([Tcl/Tk](https://www.tcl-lang.org)) | The app and its interface (standard library only) | PSF-2.0, Tcl/Tk license (BSD-style) |
+| Windows Shell (`Shell.Application`, `CopyHere` / `MoveHere`) | Reading an Android phone over USB (MTP) and copying or moving its files, the same way Explorer does | Windows API |
+| Windows PowerShell 5.1 | Runs the Shell bridge that talks to the phone (comes with Windows) | Part of Windows 10/11 (Microsoft) |
+| `hashlib` SHA-256 (Python standard library) | Duplicate finder: matches only truly identical files | PSF-2.0 |
+
+No third-party packages: everything above comes with Python or with Windows, so there is nothing to install.
+
 ## License
 
 [MIT](LICENSE) © 2026 Dani Abdani
